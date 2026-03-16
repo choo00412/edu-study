@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>나의 공부 엔진 자가진단</title>
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+    <style>
+        /* 세련된 교육 테마 색상 */
+        :root {
+            --primary-blue: #2A4B7C;    /* 신뢰의 블루 (질문A) */
+            --primary-coral: #E67E72;   /* 포용의 코랄 (질문B) */
+            --bg-light: #F8F9FA;        /* 부드러운 배경색 */
+            --text-dark: #333333;       /* 글자색 */
+            --shadow-subtle: 0 15px 35px rgba(0,0,0,0.08); /* 세련된 그림자 */
+        }
+
+        body { font-family: 'Pretendard', sans-serif; background-color: var(--bg-light); color: var(--text-dark); display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        
+        /* 메인 컨테이너 */
+        #game-container { background: white; padding: 40px; border-radius: 25px; box-shadow: var(--shadow-subtle); width: 90%; max-width: 500px; text-align: center; position: relative; overflow: hidden; transition: 0.3s; }
+        
+        /* 진행 바 */
+        #progress-container { width: 100%; height: 6px; background-color: #eee; border-radius: 3px; margin-bottom: 30px; position: relative; }
+        #progress-bar { height: 100%; background-color: var(--primary-blue); width: 20%; border-radius: 3px; transition: width 0.3s ease; }
+        #progress-text { position: absolute; top: -20px; right: 0; font-size: 0.8rem; color: #777; font-weight: bold; }
+
+        /* 질문 화면 */
+        #question-screen { opacity: 1; transition: opacity 0.3s ease; }
+        .fade-out { opacity: 0 !important; }
+
+        /* 이미지 스타일 */
+        .question-img-container { width: 100%; height: 200px; overflow: hidden; border-radius: 20px; margin-bottom: 25px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+        .question-img { width: 100%; height: 100%; object-fit: cover; }
+
+        /* 질문 텍스트 */
+        h2 { font-size: 1.3rem; line-height: 1.6; margin-bottom: 35px; font-weight: 700; color: #111; word-break: keep-all; }
+
+        /* 버튼 컨테이너 및 스타일 */
+        .btn-container { display: flex; flex-direction: column; gap: 12px; }
+        button { padding: 18px 25px; border: none; border-radius: 12px; font-size: 1.1rem; cursor: pointer; transition: 0.3s ease-out; font-weight: 600; text-align: left; position: relative; }
+        
+        /* 파란색 버튼 (A선택) */
+        .btn-a { background-color: #EBF1FA; color: var(--primary-blue); }
+        .btn-a::after { content: '→'; position: absolute; right: 25px; opacity: 0.5; transition: 0.2s; }
+        
+        /* 코랄색 버튼 (B선택) */
+        .btn-b { background-color: #FFF2F0; color: var(--primary-coral); }
+        .btn-b::after { content: '→'; position: absolute; right: 25px; opacity: 0.5; transition: 0.2s; }
+
+        /* 마우스 호버 효과 */
+        button:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+        .btn-a:hover { background-color: var(--primary-blue); color: white; }
+        .btn-b:hover { background-color: var(--primary-coral); color: white; }
+        button:hover::after { opacity: 1; right: 20px; }
+
+        /* 결과 화면 (처음엔 숨김) */
+        #result { display: none; }
+        .result-title { font-size: 1.8rem; color: var(--primary-blue); margin-bottom: 15px; font-weight: 800; background: rgba(42,75,124,0.05); display: inline-block; padding: 10px 20px; border-radius: 10px; }
+        .result-desc { font-size: 1.1rem; line-height: 1.7; color: #555; margin-bottom: 30px; word-break: keep-all; }
+        .result-prescription { background-color: #F8F9FA; padding: 25px; border-radius: 15px; border-left: 5px solid var(--primary-blue); text-align: left; margin-top: 30px; }
+        .result-prescription h3 { font-size: 1.2rem; margin-top: 0; color: #111; }
+        .result-prescription ul { padding-left: 20px; margin-bottom: 0; }
+        .result-prescription li { margin-bottom: 10px; line-height: 1.5; color: #444; }
+
+        /* 다시 하기 버튼 */
+        .btn-restart { background-color: #eee; color: #555; padding: 12px 20px; font-size: 1rem; border-radius: 8px; font-weight: 500; text-align: center; }
+        .btn-restart:hover { background-color: #ddd; }
+
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="progress-container">
+        <div id="progress-bar"></div>
+        <span id="progress-text">Q1/Q5</span>
+    </div>
+
+    <div id="question-screen">
+        <div class="question-img-container">
+            <img id="q-image" class="question-img" src="" alt="질문 이미지">
+        </div>
+        <h2 id="q-text">질문을 불러오는 중...</h2>
+        <div class="btn-container">
+            <button id="btn-a" class="btn-a" onclick="next('A')">선택지 A</button>
+            <button id="btn-b" class="btn-b" onclick="next('B')">선택지 B</button>
+        </div>
+    </div>
+
+    <div id="result">
+        <p>나의 공부 엔진 분석 결과는?</p>
+        <h1 id="res-title" class="result-title">결과 제목</h1>
+        <p id="res-desc" class="result-desc">결과 설명이 들어갑니다.</p>
+        
+        <div class="result-prescription">
+            <h3>👩‍🏫 강사님의 유형별 맞춤 조언</h3>
+            <ul id="res-prescription-list">
+                <li>처방전 내용 1</li>
+                <li>처방전 내용 2</li>
+            </ul>
+        </div>
+        
+        <button class="btn-restart" onclick="location.reload()" style="margin-top:30px;">다시 하기</button>
+    </div>
+</div>
+
+<script>
+    // 질문 데이터 (교육/학습 관련 무료 일러스트 이미지 URL 삽입)
+    const questions = {
+        "Q1": { text: "새로운 취미나 운동을 시작할 때,<br>나는 어떤 순간에 더 즐거운가?", a: "어제보다 동작이 익숙해진 순간", b: "실력을 인정받는 순간", nextA: "Q2A", nextB: "Q2B", img: "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?q=80&w=600&auto=format&fit=crop" },
+        "Q2A": { text: "결과가 나빠도 내가 깊이 배웠다면<br>그 시간이 가치 있었다고 생각하나?", a: "매우 그렇다 (과정 중심)", b: "그건 아니다 (결과 중심)", nextA: "TypeA", nextB: "Q2B", img: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?q=80&w=600&auto=format&fit=crop" },
+        "Q2B": { text: "어려운 문제를 나만 맞히거나<br>똑똑해 보일 때 공부할 맛이 나나?", a: "YES (인정 욕구)", b: "NO (그건 아니다)", nextA: "Q3", nextB: "Q4", img: "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=600&auto=format&fit=crop" },
+        "Q3": { text: "내가 노력했는데 결과가 안 좋으면,<br>무능해 보일까 봐 두려운 마음이 큰가?", a: "YES (무능감에 대한 공포)", b: "NO (그건 아니다)", nextA: "Q5", nextB: "Q4", img: "https://images.unsplash.com/photo-1510531704581-5b2870972060?q=80&w=600&auto=format&fit=crop" },
+        "Q4": { text: "공부 안 한 친구가 나보다 잘 나오면,<br>자존심 상해서 더 독하게 마음먹나?", a: "YES (경쟁 심리)", b: "NO (그건 아니다)", nextA: "TypeB", nextB: "Q5", img: "https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=600&auto=format&fit=crop" },
+        "Q5": { text: "실력이 들통날까 봐 무서워서,<br>아예 시도조차 안 하거나 포기하고 싶나?", a: "YES (실패 회피)", b: "NO (그건 아니다)", nextA: "TypeC", nextB: "TypeD", img: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?q=80&w=600&auto=format&fit=crop" }
+    };
+
+    // 강화된 결과 데이터 (설명 및 처방전 리스트 추가)
+    const results = {
+        "TypeA": { 
+            title: "유형 A: 숙달목표 엔진", 
+            desc: "당신은 배움 그 자체에서 기쁨을 느끼는 멋진 학습자입니다! 과정 중심적 사고를 가지고 있어 슬럼프에 강합니다.",
+            prescription: ["지금처럼 배움의 즐거움을 유지하세요.", "자신만의 깊이 있는 목표를 세워 도전해 보세요.", "동료들과 지식을 나누며 함께 성장하는 경험을 늘려보세요."]
+        },
+        "TypeB": { 
+            title: "유형 B: 수행-접근목표 엔진", 
+            desc: "당신은 경쟁과 인정을 통해 성장하는 열정적인 에너지 엔진을 가졌군요! 성과를 내는 데 탁월한 능력이 있습니다.",
+            prescription: ["구체적이고 달성 가능한 성과 목표를 세우세요.", "적절한 경쟁 환경이 동기 부여에 도움이 됩니다.", "가끔은 결과보다 과정의 가치를 되새겨 보세요."]
+        },
+        "TypeC": { 
+            title: "유형 C: 수행-회피목표 엔진", 
+            desc: "실패에 대한 두려움이 당신의 앞길을 막고 있을 수 있어요. 실수해도 괜찮다는 마음가짐이 필요합니다.",
+            prescription: ["실수는 성장의 기회임을 잊지 마세요.", "아주 작은 목표부터 시작해 성공 경험을 쌓으세요.", "결과에 대한 부담감을 조금 내려놓고 편안하게 시도해 보세요."]
+        },
+        "TypeD": { 
+            title: "유형 D: 동기 탐색 및 미분화 엔진", 
+            desc: "아직 나만의 공부 엔진을 찾아가는 과정에 있습니다. 다양한 학습 방식을 시도해 보며 나에게 맞는 길을 찾아보세요!",
+            prescription: ["좋아하는 과목이나 관심 있는 분야부터 깊이 있게 공부해 보세요.", "나만의 학습 스타일을 발견하는 데 집중해 보세요.", "작은 성취를 축하하며 공부의 재미를 느껴보세요."]
+        }
+    };
+
+    let currentQ = "Q1";
+    let qCount = 0; // 질문 순서 카운트
+    const totalQ = 5; // 총 질문 수
+
+    function update() {
+        const q = questions[currentQ];
+        if(!q) return showResult(currentQ);
+
+        // 진행 바 업데이트
+        qCount++;
+        const progressPercent = (qCount / totalQ) * 100;
+        document.getElementById("progress-bar").style.width = progressPercent + "%";
+        document.getElementById("progress-text").innerText = "Q" + qCount + "/Q" + totalQ;
+
+        // 질문 텍스트 및 버튼 텍스트 업데이트
+        document.getElementById("q-text").innerHTML = q.text;
+        document.getElementById("btn-a").innerHTML = "A. " + q.a;
+        document.getElementById("btn-b").innerHTML = "B. " + q.b;
+        
+        // 이미지 업데이트
+        const imgTag = document.getElementById("q-image");
+        imgTag.src = q.img;
+        
+        // 페이드인 효과 (0.1초 뒤)
+        setTimeout(() => {
+            document.getElementById("question-screen").classList.remove("fade-out");
+        }, 100);
+    }
+
+    function next(choice) {
+        // 페이드아웃 효과
+        document.getElementById("question-screen").classList.add("fade-out");
+        
+        const q = questions[currentQ];
+        const nextStep = (choice === 'A') ? q.nextA : q.nextB;
+
+        // 애니메이션 시간(0.3초) 뒤에 다음 질문으로
+        setTimeout(() => {
+            if (results[nextStep]) {
+                showResult(nextStep);
+            } else {
+                currentQ = nextStep;
+                update();
+            }
+        }, 300);
+    }
+
+    function showResult(type) {
+        document.getElementById("question-screen").style.display = "none";
+        document.getElementById("progress-container").style.display = "none"; // 결과 화면에선 진행 바 숨김
+        document.getElementById("result").style.display = "block";
+        
+        const res = results[type];
+        document.getElementById("res-title").innerText = res.title;
+        document.getElementById("res-desc").innerText = res.desc;
+        
+        // 처방전 리스트 생성
+        const prescriptionList = document.getElementById("res-prescription-list");
+        prescriptionList.innerHTML = ""; // 기존 내용 초기화
+        res.prescription.forEach(item => {
+            const li = document.createElement("li");
+            li.innerText = item;
+            prescriptionList.appendChild(li);
+        });
+    }
+
+    update();
+</script>
+
+</body>
+</html>
